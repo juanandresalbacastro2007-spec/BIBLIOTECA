@@ -236,3 +236,168 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+
+
+
+SELECT numero,copianumero
+FROM socio
+LEFT JOIN prestamo
+ON socio.Numero = prestamo.copiaNumero;
+
+
+
+
+DELIMITER //
+
+CREATE PROCEDURE listar_libros_en_prestamo()
+BEGIN
+    SELECT 
+        l.isbn,
+        l.Titulo,
+        p.fechaPrestamo,
+        p.fechaDevolucion,
+        s.Numero AS NumeroSocio,
+        s.Nombre,
+        s.Apellido
+    FROM prestamo p
+    INNER JOIN libro l 
+        ON p.copiaISBN = l.isbn
+    INNER JOIN socio s 
+        ON p.copiaNumero = s.Numero;
+END //
+
+DELIMITER ;
+
+
+
+
+
+
+INSERT INTO `socio`(`Numero`, `Nombre`, `Apellido`, `Direccion`, `Telefono`) VALUES ('13','juan','almanza','calle 22 avenida esperanza','9123456788')
+
+
+
+
+
+
+DELIMITER $$
+
+CREATE PROCEDURE BuscarLibroPorNombre(
+    IN p_titulo VARCHAR(255)
+)
+BEGIN
+    SELECT 
+        l.Isbn,
+        l.Titulo,
+        l.Genero,
+        l.NumeroPaginas,
+        l.DiasPrestamo
+    FROM libro AS l
+    WHERE l.Titulo LIKE CONCAT('%', p_titulo, '%');
+END $$
+
+DELIMITER ;
+
+
+
+
+
+
+
+DELIMITER //
+
+CREATE PROCEDURE actualizar_datos_socio(
+    IN p_numero INT,
+    IN p_direccion VARCHAR(255),
+    IN p_telefono VARCHAR(10)
+)
+BEGIN
+    UPDATE socio
+    SET 
+        Direccion = p_direccion,
+        Telefono = p_telefono
+    WHERE Numero = p_numero;
+END //
+
+DELIMITER ;
+
+
+
+
+
+
+
+
+DELIMITER //
+
+CREATE PROCEDURE eliminar_libro(IN p_isbn BIGINT)
+BEGIN
+    IF EXISTS (SELECT 1 FROM prestamo WHERE copiaISBN = p_isbn)
+       OR EXISTS (SELECT 1 FROM tipoautores WHERE copiaISBN = p_isbn) THEN
+       
+        SELECT 'No se puede eliminar, tiene dependencias' AS mensaje;
+        
+    ELSE
+        DELETE FROM libro WHERE isbn = p_isbn;
+        SELECT 'Libro eliminado correctamente' AS mensaje;
+    END IF;
+END //
+
+DELIMITER ;
+
+
+
+
+
+
+
+
+
+DELIMITER //
+
+CREATE FUNCTION contar_socios()
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE total INT;
+
+    SELECT COUNT(*) INTO total
+    FROM socio;
+
+    RETURN total;
+END //
+
+DELIMITER ;
+
+
+
+
+
+
+
+
+
+
+
+DELIMITER //
+
+CREATE FUNCTION dias_en_prestamo(p_isbn BIGINT)
+RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE dias INT;
+
+    SELECT DATEDIFF(
+            IFNULL(fechaDevolucion, CURDATE()),
+            fechaPrestamo
+           )
+    INTO dias
+    FROM prestamo
+    WHERE copiaISBN = p_isbn
+    LIMIT 1;
+
+    RETURN dias;
+END //
+
+DELIMITER ;
