@@ -1,9 +1,9 @@
--- phpMyAdmin SQL Dump
+- phpMyAdmin SQL Dump
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 23-02-2026 a las 17:04:51
+-- Tiempo de generación: 05-03-2026 a las 17:16:10
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -20,6 +20,174 @@ SET time_zone = "+00:00";
 --
 -- Base de datos: `biblioteca`
 --
+
+DELIMITER $$
+--
+-- Procedimientos
+--
+CREATE DEFINER=`root`@`localhost` PROCEDURE `actualizar_contacto_socio` (IN `numero` INT, IN `nueva_direccion` VARCHAR(255), IN `nuevo_telefono` VARCHAR(10))   BEGIN
+    UPDATE socio 
+    SET direccion = nueva_direccion, 
+        telefono = nuevo_telefono
+    WHERE numero = numero;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `actualizar_datos_socio` (IN `p_numero` INT, IN `p_direccion` VARCHAR(255), IN `p_telefono` VARCHAR(10))   BEGIN
+    UPDATE socio
+    SET 
+        Direccion = p_direccion,
+        Telefono = p_telefono
+    WHERE Numero = p_numero;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `buscar_libro_por_nombre` (IN `nombreLibro` VARCHAR(255))   BEGIN
+    SELECT *
+    FROM libro
+    WHERE Titulo LIKE CONCAT('%', nombreLibro, '%');
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `eliminar_libro` (IN `p_isbn` BIGINT)   BEGIN
+    IF EXISTS (SELECT 1 FROM prestamo WHERE copiaISBN = p_isbn)
+       OR EXISTS (SELECT 1 FROM tipoautores WHERE copiaISBN = p_isbn) THEN
+       
+        SELECT 'No se puede eliminar, tiene dependencias' AS mensaje;
+        
+    ELSE
+        DELETE FROM libro WHERE isbn = p_isbn;
+        SELECT 'Libro eliminado correctamente' AS mensaje;
+    END IF;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `get_listaAutores` ()   SELECT aut_codigo, aut_apellido
+FROM tbl_autor
+ORDER BY aut_apellido DESC$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `get_tipoAutor` (`variable` VARCHAR(20))   SELECT aut_apellido AS 'Autor', tipoAutor
+FROM tbl_autor
+INNER JOIN tbl_tipoautores
+ON aut_codigo = copiaAutor
+WHERE tipoAutor = variable$$$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `listar_libros_en_prestamo` ()   BEGIN
+    SELECT 
+        l.isbn,
+        l.Titulo,
+        p.fechaPrestamo,
+        p.fechaDevolucion,
+        s.Numero AS NumeroSocio,
+        s.Nombre,
+        s.Apellido
+    FROM prestamo p
+    INNER JOIN libro l 
+        ON p.copiaISBN = l.isbn
+    INNER JOIN socio s 
+        ON p.copiaNumero = s.Numero;
+END$$
+
+CREATE DEFINER=`root`@`localhost` PROCEDURE `listar_socios_y_prestamos` ()   BEGIN
+    SELECT 
+        s.numero,
+        s.nombre,
+        s.apellido,
+        p.id,
+        p.fechaPrestamo,
+        p.copiaISBN
+    FROM socio s
+    LEFT JOIN prestamo p 
+        ON s.numero = p.copiaNumero;
+END$$
+
+--
+-- Funciones
+--
+CREATE DEFINER=`root`@`localhost` FUNCTION `contar_socios` () RETURNS INT(11) DETERMINISTIC BEGIN
+    DECLARE total INT;
+
+    SELECT COUNT(*) INTO total
+    FROM socio;
+
+    RETURN total;
+END$$
+
+CREATE DEFINER=`root`@`localhost` FUNCTION `contar_total_socios` () RETURNS INT(11) DETERMINISTIC BEGIN
+    DECLARE total INT;
+
+    SELECT COUNT(*) INTO total 
+    FROM socio;
+
+    RETURN total;
+END$$
+
+CREATE DEFINER=`root`@`localhost` FUNCTION `dias_en_prestamo` (`p_isbn` BIGINT) RETURNS INT(11) DETERMINISTIC BEGIN
+    DECLARE dias INT;
+
+    SELECT DATEDIFF(
+            IFNULL(fechaDevolucion, CURDATE()),
+            fechaPrestamo
+           )
+    INTO dias
+    FROM prestamo
+    WHERE copiaISBN = p_isbn
+    LIMIT 1;
+
+    RETURN dias;
+END$$
+
+DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `audi_libro`
+--
+
+CREATE TABLE `audi_libro` (
+  `audi_isbn` bigint(20) NOT NULL,
+  `audi_genero` varchar(20) DEFAULT NULL,
+  `audi_titulo` varchar(255) DEFAULT NULL,
+  `audi_diasPrestamo` tinyint(4) DEFAULT NULL,
+  `audi_numeroPaginas` int(11) DEFAULT NULL,
+  `fecha_registro` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `audi_libro`
+--
+
+INSERT INTO `audi_libro` (`audi_isbn`, `audi_genero`, `audi_titulo`, `audi_diasPrestamo`, `audi_numeroPaginas`, `fecha_registro`) VALUES
+(2147483647, 'Fantasía', 'Las Crónicas de SQL', 15, 350, '2026-03-05 09:53:58'),
+(2718281828, 'novela', 'las cronicas del santi ', 2, 387, '2026-03-05 10:23:50'),
+(5555555555, 'ELIMINADO', 'La Última Llave del Destino', NULL, NULL, '2026-03-05 10:41:38');
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `audi_socio`
+--
+
+CREATE TABLE `audi_socio` (
+  `id_audi` int(10) NOT NULL,
+  `Numero_audi` int(11) DEFAULT NULL,
+  `Nombre_anterior` varchar(45) DEFAULT NULL,
+  `Apellido_anterior` varchar(45) DEFAULT NULL,
+  `Direccion_anterior` varchar(255) DEFAULT NULL,
+  `Telefono_anterior` varchar(10) DEFAULT NULL,
+  `Nombre_nuevo` varchar(45) DEFAULT NULL,
+  `Apellido_nuevo` varchar(45) DEFAULT NULL,
+  `Direccion_nuevo` varchar(255) DEFAULT NULL,
+  `Telefono_nuevo` varchar(10) DEFAULT NULL,
+  `audi_fechaModificacion` datetime DEFAULT NULL,
+  `audi_usuario` varchar(10) DEFAULT NULL,
+  `audi_accion` varchar(45) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `audi_socio`
+--
+
+INSERT INTO `audi_socio` (`id_audi`, `Numero_audi`, `Nombre_anterior`, `Apellido_anterior`, `Direccion_anterior`, `Telefono_anterior`, `Nombre_nuevo`, `Apellido_nuevo`, `Direccion_nuevo`, `Telefono_nuevo`, `audi_fechaModificacion`, `audi_usuario`, `audi_accion`) VALUES
+(1, 14, 'cristiano', 'ronaldo', 'medio oriente avenida ', '3001234569', 'cristiano', 'ronaldo', 'medio oriente avenida', '3001234569', '2026-03-05 08:00:02', 'root@local', 'Actualización'),
+(2, 14, 'cristiano', 'ronaldo', 'medio oriente avenida', '3001234569', 'cristiano', 'ronaldo', 'medio oriente avenida al nassr', '3001234569', '2026-03-05 08:01:14', 'root@local', 'Actualización');
 
 -- --------------------------------------------------------
 
@@ -74,15 +242,78 @@ INSERT INTO `libro` (`Isbn`, `Titulo`, `Genero`, `NumeroPaginas`, `DiasPrestamo`
 (1234567890, 'El Sueño de los Susurros', 'novela', 275, 7),
 (1357924680, 'El Jardín de las Mariposas Perdidas', 'novela', 536, 7),
 (2468135790, 'La Melodía de la Oscuridad', 'romance', 189, 7),
-(2718281828, 'El Bosque de los Suspiros', 'novela', 387, 2),
+(2718281828, 'las cronicas del santi ', 'novela', 387, 2),
 (3141592653, 'El Secreto de las Estrellas Olvidadas', 'Misterio', 203, 7),
-(5555555555, 'La Última Llave del Destino', 'cuento', 503, 7),
 (7777777777, 'El Misterio de la Luna Plateada', 'Misterio', 422, 7),
 (8642097531, 'El Reloj de Arena Infinito', 'novela', 321, 7),
 (8888888888, 'La Ciudad de los Susurros', 'Misterio', 274, 1),
 (9517530862, 'Las Crónicas del Eco Silencioso', 'fantasía', 448, 7),
 (9876543210, 'El Laberinto de los Recuerdos', 'cuento', 412, 7),
+(9998887776, 'Las Crónicas de SQL', 'Fantasía', 350, 15),
 (9999999999, 'El Enigma de los Espejos Rotos', 'romance', 156, 7);
+
+--
+-- Disparadores `libro`
+--
+DELIMITER $$
+CREATE TRIGGER `DELETE_libro` AFTER DELETE ON `libro` FOR EACH ROW BEGIN
+    INSERT INTO audi_libro (
+        audi_isbn, 
+        audi_titulo, 
+        fecha_registro,
+        audi_genero 
+    ) 
+    VALUES (
+        OLD.Isbn,     
+        OLD.Titulo, 
+        NOW(),
+        'ELIMINADO' 
+    );
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `insertar_nuevo_libro` AFTER INSERT ON `libro` FOR EACH ROW BEGIN
+    INSERT INTO audi_libro (
+        audi_isbn,
+        audi_genero,
+        audi_titulo,
+        audi_diasPrestamo,
+        audi_numeroPaginas,
+        fecha_registro 
+    )
+    VALUES (
+        NEW.Isbn,            
+        NEW.Genero,          
+        NEW.Titulo,          
+        NEW.DiasPrestamo,    
+        NEW.NumeroPaginas,   
+        NOW()                   
+    );
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `update_libros` BEFORE UPDATE ON `libro` FOR EACH ROW BEGIN
+    INSERT INTO audi_libro (
+        audi_isbn,        
+        audi_genero,
+        audi_titulo,
+        audi_diasPrestamo,
+        audi_numeroPaginas,
+        fecha_registro
+    )
+    VALUES (
+        NEW.Isbn,         
+        NEW.Genero,
+        NEW.Titulo,
+        NEW.DiasPrestamo,
+        NEW.NumeroPaginas,
+        NOW()
+    );
+END
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -106,11 +337,8 @@ INSERT INTO `prestamo` (`id`, `fechaPrestamo`, `fechaDevolucion`, `copiaNumero`,
 ('pres1', '2023-01-15', '2023-01-20', 1, 1234567890),
 ('pres2', '2023-02-03', '2023-02-04', 2, 9999999999),
 ('pres3', '2023-04-09', '2023-04-11', 6, 2718281828),
-('pres5', '2023-07-02', '2023-07-09', 10, 5555555555),
-('pres6', '2023-08-19', '2023-08-26', 12, 5555555555),
 ('pres7', '2023-10-24', '2023-10-27', 3, 1357924680),
-('pres8', '2023-11-11', '2023-11-12', 4, 9999999999),
-('pres9', '2023-12-29', '2023-12-30', 8, 5555555555);
+('pres8', '2023-11-11', '2023-11-12', 4, 9999999999);
 
 -- --------------------------------------------------------
 
@@ -131,7 +359,7 @@ CREATE TABLE `socio` (
 --
 
 INSERT INTO `socio` (`Numero`, `Nombre`, `Apellido`, `Direccion`, `Telefono`) VALUES
-(1, 'Ana', 'Ruiz', 'Calle Primavera 123, Ciudad Jardín, Barcelona', '9123456780'),
+(1, 'Ana', 'Ruiz', 'Calle 10 #25-30', '3001234567'),
 (2, 'Andrés Felipe', 'Galindo Luna', 'Avenida del Sol 456, Pueblo Nuevo, Madrid', '2123456789'),
 (3, 'Juan', 'González', 'Calle Principal 789, Villa Flores, Valencia', '2012345678'),
 (4, 'María', 'Rodríguez', 'Carrera del Río 321, El Pueblo, Sevilla', '3012345678'),
@@ -142,7 +370,42 @@ INSERT INTO `socio` (`Numero`, `Nombre`, `Apellido`, `Direccion`, `Telefono`) VA
 (9, 'Luis', 'Hernández', 'Avenida de la Montaña 890, Monte Verde, Granada', '6101234567'),
 (10, 'Andrea', 'García', 'Calle del Sol 432, La Colina, Zaragoza', '1112345678'),
 (11, 'Alejandro', 'Torres', 'Carrera del Oeste 765, Ciudad Nueva, Murcia', '4951234567'),
-(12, 'Sofia', 'Morales', 'Avenida del Mar 098, Costa Brava, Gijón', '5512345678');
+(12, 'Sofia', 'Morales', 'Avenida del Mar 098, Costa Brava, Gijón', '5512345678'),
+(13, 'juan', 'almanza', 'calle 22 avenida esperanza', '9123456788'),
+(14, 'cristiano', 'ronaldo', 'medio oriente avenida al nassr', '3001234569');
+
+--
+-- Disparadores `socio`
+--
+DELIMITER $$
+CREATE TRIGGER `socios_before_update` BEFORE UPDATE ON `socio` FOR EACH ROW INSERT INTO audi_socio(
+    Numero_audi,
+    Nombre_anterior,
+    Apellido_anterior,
+    Direccion_anterior,
+    Telefono_anterior,
+    Nombre_nuevo,
+    Apellido_nuevo,
+   	Direccion_nuevo,
+    Telefono_nuevo,
+    audi_fechaModificacion,
+    audi_usuario,
+    audi_accion)
+VALUES(
+    new.numero,
+    old.nombre,
+    old.apellido,
+    old.direccion,
+    old.telefono,
+    new.nombre,
+    new.apellido,
+    new.direccion,
+    new.telefono,
+    NOW(),
+    CURRENT_USER(),
+    'Actualización')
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -168,7 +431,6 @@ INSERT INTO `tipoautores` (`copiaISBN`, `copiaAutor`, `tipoAutor`) VALUES
 (2468135790, 234, 'Autor'),
 (2718281828, 789, 'Traductor'),
 (3141592653, 901, 'Autor'),
-(5555555555, 678, 'Autor'),
 (7777777777, 765, 'Autor'),
 (8642097531, 345, 'Autor'),
 (8888888888, 234, 'Autor'),
@@ -180,6 +442,18 @@ INSERT INTO `tipoautores` (`copiaISBN`, `copiaAutor`, `tipoAutor`) VALUES
 --
 -- Índices para tablas volcadas
 --
+
+--
+-- Indices de la tabla `audi_libro`
+--
+ALTER TABLE `audi_libro`
+  ADD PRIMARY KEY (`audi_isbn`);
+
+--
+-- Indices de la tabla `audi_socio`
+--
+ALTER TABLE `audi_socio`
+  ADD PRIMARY KEY (`id_audi`);
 
 --
 -- Indices de la tabla `autor`
@@ -199,7 +473,7 @@ ALTER TABLE `libro`
 ALTER TABLE `prestamo`
   ADD PRIMARY KEY (`id`),
   ADD KEY `copiaNumero` (`copiaNumero`),
-  ADD KEY `copiaISBN` (`copiaISBN`);
+  ADD KEY `prestamo_ibfk_2` (`copiaISBN`);
 
 --
 -- Indices de la tabla `socio`
@@ -215,6 +489,16 @@ ALTER TABLE `tipoautores`
   ADD KEY `copiaAutor` (`copiaAutor`);
 
 --
+-- AUTO_INCREMENT de las tablas volcadas
+--
+
+--
+-- AUTO_INCREMENT de la tabla `audi_socio`
+--
+ALTER TABLE `audi_socio`
+  MODIFY `id_audi` int(10) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- Restricciones para tablas volcadas
 --
 
@@ -223,181 +507,16 @@ ALTER TABLE `tipoautores`
 --
 ALTER TABLE `prestamo`
   ADD CONSTRAINT `prestamo_ibfk_1` FOREIGN KEY (`copiaNumero`) REFERENCES `socio` (`Numero`),
-  ADD CONSTRAINT `prestamo_ibfk_2` FOREIGN KEY (`copiaISBN`) REFERENCES `libro` (`Isbn`);
+  ADD CONSTRAINT `prestamo_ibfk_2` FOREIGN KEY (`copiaISBN`) REFERENCES `libro` (`Isbn`) ON DELETE CASCADE;
 
 --
 -- Filtros para la tabla `tipoautores`
 --
 ALTER TABLE `tipoautores`
-  ADD CONSTRAINT `tipoautores_ibfk_1` FOREIGN KEY (`copiaISBN`) REFERENCES `libro` (`Isbn`),
+  ADD CONSTRAINT `fk_libro_autores` FOREIGN KEY (`copiaISBN`) REFERENCES `libro` (`Isbn`) ON DELETE CASCADE,
   ADD CONSTRAINT `tipoautores_ibfk_2` FOREIGN KEY (`copiaAutor`) REFERENCES `autor` (`Codigo`);
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-
-
-
-
-SELECT numero,copianumero
-FROM socio
-LEFT JOIN prestamo
-ON socio.Numero = prestamo.copiaNumero;
-
-
-
-
-DELIMITER //
-
-CREATE PROCEDURE listar_libros_en_prestamo()
-BEGIN
-    SELECT 
-        l.isbn,
-        l.Titulo,
-        p.fechaPrestamo,
-        p.fechaDevolucion,
-        s.Numero AS NumeroSocio,
-        s.Nombre,
-        s.Apellido
-    FROM prestamo p
-    INNER JOIN libro l 
-        ON p.copiaISBN = l.isbn
-    INNER JOIN socio s 
-        ON p.copiaNumero = s.Numero;
-END //
-
-DELIMITER ;
-
-
-
-
-
-
-INSERT INTO `socio`(`Numero`, `Nombre`, `Apellido`, `Direccion`, `Telefono`) VALUES ('13','juan','almanza','calle 22 avenida esperanza','9123456788')
-
-
-
-
-
-
-DELIMITER $$
-
-CREATE PROCEDURE BuscarLibroPorNombre(
-    IN p_titulo VARCHAR(255)
-)
-BEGIN
-    SELECT 
-        l.Isbn,
-        l.Titulo,
-        l.Genero,
-        l.NumeroPaginas,
-        l.DiasPrestamo
-    FROM libro AS l
-    WHERE l.Titulo LIKE CONCAT('%', p_titulo, '%');
-END $$
-
-DELIMITER ;
-
-
-
-
-
-
-
-DELIMITER //
-
-CREATE PROCEDURE actualizar_datos_socio(
-    IN p_numero INT,
-    IN p_direccion VARCHAR(255),
-    IN p_telefono VARCHAR(10)
-)
-BEGIN
-    UPDATE socio
-    SET 
-        Direccion = p_direccion,
-        Telefono = p_telefono
-    WHERE Numero = p_numero;
-END //
-
-DELIMITER ;
-
-
-
-
-
-
-
-
-DELIMITER //
-
-CREATE PROCEDURE eliminar_libro(IN p_isbn BIGINT)
-BEGIN
-    IF EXISTS (SELECT 1 FROM prestamo WHERE copiaISBN = p_isbn)
-       OR EXISTS (SELECT 1 FROM tipoautores WHERE copiaISBN = p_isbn) THEN
-       
-        SELECT 'No se puede eliminar, tiene dependencias' AS mensaje;
-        
-    ELSE
-        DELETE FROM libro WHERE isbn = p_isbn;
-        SELECT 'Libro eliminado correctamente' AS mensaje;
-    END IF;
-END //
-
-DELIMITER ;
-
-
-
-
-
-
-
-
-
-DELIMITER //
-
-CREATE FUNCTION contar_socios()
-RETURNS INT
-DETERMINISTIC
-BEGIN
-    DECLARE total INT;
-
-    SELECT COUNT(*) INTO total
-    FROM socio;
-
-    RETURN total;
-END //
-
-DELIMITER ;
-
-
-
-
-
-
-
-
-
-
-
-DELIMITER //
-
-CREATE FUNCTION dias_en_prestamo(p_isbn BIGINT)
-RETURNS INT
-DETERMINISTIC
-BEGIN
-    DECLARE dias INT;
-
-    SELECT DATEDIFF(
-            IFNULL(fechaDevolucion, CURDATE()),
-            fechaPrestamo
-           )
-    INTO dias
-    FROM prestamo
-    WHERE copiaISBN = p_isbn
-    LIMIT 1;
-
-    RETURN dias;
-END //
-
-DELIMITER ;
