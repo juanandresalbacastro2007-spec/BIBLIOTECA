@@ -1,9 +1,9 @@
-- phpMyAdmin SQL Dump
+-- phpMyAdmin SQL Dump
 -- version 5.2.1
 -- https://www.phpmyadmin.net/
 --
 -- Servidor: 127.0.0.1
--- Tiempo de generación: 05-03-2026 a las 17:16:10
+-- Tiempo de generación: 09-03-2026 a las 16:23:08
 -- Versión del servidor: 10.4.32-MariaDB
 -- Versión de PHP: 8.2.12
 
@@ -18,7 +18,7 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Base de datos: `biblioteca`
+-- Base de datos: `biblioteca_juan`
 --
 
 DELIMITER $$
@@ -66,7 +66,7 @@ CREATE DEFINER=`root`@`localhost` PROCEDURE `get_tipoAutor` (`variable` VARCHAR(
 FROM tbl_autor
 INNER JOIN tbl_tipoautores
 ON aut_codigo = copiaAutor
-WHERE tipoAutor = variable$$$$
+WHERE tipoAutor = variable$$
 
 CREATE DEFINER=`root`@`localhost` PROCEDURE `listar_libros_en_prestamo` ()   BEGIN
     SELECT 
@@ -134,6 +134,40 @@ CREATE DEFINER=`root`@`localhost` FUNCTION `dias_en_prestamo` (`p_isbn` BIGINT) 
 END$$
 
 DELIMITER ;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura Stand-in para la vista `apellido_telefono`
+-- (Véase abajo para la vista actual)
+--
+CREATE TABLE `apellido_telefono` (
+`Apellido` varchar(45)
+,`Telefono` varchar(10)
+);
+
+-- --------------------------------------------------------
+
+--
+-- Estructura de tabla para la tabla `audi_autor`
+--
+
+CREATE TABLE `audi_autor` (
+  `audi_id` int(11) NOT NULL,
+  `autor_codigo` bigint(20) DEFAULT NULL,
+  `audi_apellido` varchar(45) DEFAULT NULL,
+  `audi_nacimiento` date DEFAULT NULL,
+  `audi_muerte` date DEFAULT NULL,
+  `fecha_modificacion` datetime DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Volcado de datos para la tabla `audi_autor`
+--
+
+INSERT INTO `audi_autor` (`audi_id`, `autor_codigo`, `audi_apellido`, `audi_nacimiento`, `audi_muerte`, `fecha_modificacion`) VALUES
+(1, 999, 'Autor Temporal', '1990-01-01', NULL, '2026-03-09 09:26:45'),
+(2, 999, 'pedro montria', '1990-01-01', NULL, '2026-03-09 09:29:27');
 
 -- --------------------------------------------------------
 
@@ -207,7 +241,7 @@ CREATE TABLE `autor` (
 --
 
 INSERT INTO `autor` (`Codigo`, `Apellido`, `Nacimiento`, `Muerte`) VALUES
-(98, 'Smith', '1974-12-21', '2018-07-21'),
+(98, 'García pedri', '1974-12-21', '2018-07-21'),
 (123, 'Taylor', '1980-04-15', NULL),
 (234, 'Medina', '1977-06-21', '2005-09-12'),
 (345, 'Wilson', '1975-08-29', NULL),
@@ -216,9 +250,52 @@ INSERT INTO `autor` (`Codigo`, `Apellido`, `Nacimiento`, `Muerte`) VALUES
 (567, 'Davis', '1983-03-04', '2010-03-28'),
 (678, 'Silva', '1986-02-02', NULL),
 (765, 'López', '1976-07-08', '2018-02-16'),
+(777, 'vasquez', '1980-04-17', '1910-03-28'),
 (789, 'Rodríguez', '1985-12-10', NULL),
 (890, 'Brown', '1982-11-17', NULL),
 (901, 'Soto', '1979-05-13', '2015-11-05');
+
+--
+-- Disparadores `autor`
+--
+DELIMITER $$
+CREATE TRIGGER `audi_actualizar_autor` BEFORE UPDATE ON `autor` FOR EACH ROW BEGIN
+    INSERT INTO audi_autor (
+        autor_codigo,        
+        audi_apellido,       
+        audi_nacimiento,     
+        audi_muerte,         
+        fecha_modificacion   
+    )
+    VALUES (
+        NEW.Codigo,          
+        NEW.Apellido,        
+        NEW.Nacimiento,     
+        NEW.Muerte,          
+        NOW()
+    );
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `audi_eliminar_autor` AFTER DELETE ON `autor` FOR EACH ROW BEGIN
+    INSERT INTO audi_autor (
+        autor_codigo,
+        audi_apellido,
+        audi_nacimiento,
+        audi_muerte,
+        fecha_modificacion
+    )
+    VALUES (
+        OLD.Codigo,
+        OLD.Apellido,
+        OLD.Nacimiento,
+        OLD.Muerte,    -- Aquí ya NO hay coma porque el siguiente es el último valor
+        NOW()          -- Último valor, sin coma al final
+    );
+END
+$$
+DELIMITER ;
 
 -- --------------------------------------------------------
 
@@ -268,6 +345,31 @@ CREATE TRIGGER `DELETE_libro` AFTER DELETE ON `libro` FOR EACH ROW BEGIN
         OLD.Titulo, 
         NOW(),
         'ELIMINADO' 
+    );
+END
+$$
+DELIMITER ;
+DELIMITER $$
+CREATE TRIGGER `auditoria_li` AFTER INSERT ON `libro` FOR EACH ROW BEGIN
+    INSERT INTO audi_libro (
+        isbn,
+        titulo,
+        genero,
+        paginas,
+        diasPrestamo,
+        audi_fecha,
+        audi_usuario,
+        audi_accion
+    )
+    VALUES (
+        NEW.isbn,
+        NEW.titulo,
+        NEW.genero,
+        NEW.numeroPaginas, -
+        NEW.diasPrestamo,
+        NOW(),
+        USER(),
+        'Insert'
     );
 END
 $$
@@ -410,6 +512,18 @@ DELIMITER ;
 -- --------------------------------------------------------
 
 --
+-- Estructura Stand-in para la vista `socioscon_retraso`
+-- (Véase abajo para la vista actual)
+--
+CREATE TABLE `socioscon_retraso` (
+`Nombre` varchar(45)
+,`Titulo` varchar(255)
+,`fechaDevolucion` date
+);
+
+-- --------------------------------------------------------
+
+--
 -- Estructura de tabla para la tabla `tipoautores`
 --
 
@@ -439,9 +553,33 @@ INSERT INTO `tipoautores` (`copiaISBN`, `copiaAutor`, `tipoAutor`) VALUES
 (9876543210, 567, 'Autor'),
 (9999999999, 98, 'Autor');
 
+-- --------------------------------------------------------
+
+--
+-- Estructura para la vista `apellido_telefono`
+--
+DROP TABLE IF EXISTS `apellido_telefono`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `apellido_telefono`  AS SELECT `socio`.`Apellido` AS `Apellido`, `socio`.`Telefono` AS `Telefono` FROM `socio` ORDER BY `socio`.`Apellido` ASC ;
+
+-- --------------------------------------------------------
+
+--
+-- Estructura para la vista `socioscon_retraso`
+--
+DROP TABLE IF EXISTS `socioscon_retraso`;
+
+CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `socioscon_retraso`  AS SELECT `s`.`Nombre` AS `Nombre`, `l`.`Titulo` AS `Titulo`, `p`.`fechaDevolucion` AS `fechaDevolucion` FROM ((`prestamo` `p` join `socio` `s`) join `libro` `l`) WHERE `p`.`copiaNumero` = `s`.`Numero` AND `p`.`copiaISBN` = `l`.`Isbn` AND `p`.`fechaDevolucion` < curdate() ;
+
 --
 -- Índices para tablas volcadas
 --
+
+--
+-- Indices de la tabla `audi_autor`
+--
+ALTER TABLE `audi_autor`
+  ADD PRIMARY KEY (`audi_id`);
 
 --
 -- Indices de la tabla `audi_libro`
@@ -465,7 +603,8 @@ ALTER TABLE `autor`
 -- Indices de la tabla `libro`
 --
 ALTER TABLE `libro`
-  ADD PRIMARY KEY (`Isbn`);
+  ADD PRIMARY KEY (`Isbn`),
+  ADD KEY `libros_pretados` (`Titulo`,`DiasPrestamo`);
 
 --
 -- Indices de la tabla `prestamo`
@@ -493,6 +632,12 @@ ALTER TABLE `tipoautores`
 --
 
 --
+-- AUTO_INCREMENT de la tabla `audi_autor`
+--
+ALTER TABLE `audi_autor`
+  MODIFY `audi_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT de la tabla `audi_socio`
 --
 ALTER TABLE `audi_socio`
@@ -515,6 +660,18 @@ ALTER TABLE `prestamo`
 ALTER TABLE `tipoautores`
   ADD CONSTRAINT `fk_libro_autores` FOREIGN KEY (`copiaISBN`) REFERENCES `libro` (`Isbn`) ON DELETE CASCADE,
   ADD CONSTRAINT `tipoautores_ibfk_2` FOREIGN KEY (`copiaAutor`) REFERENCES `autor` (`Codigo`);
+
+DELIMITER $$
+--
+-- Eventos
+--
+CREATE DEFINER=`root`@`localhost` EVENT `anual_eliminar_prestamos` ON SCHEDULE EVERY 1 YEAR STARTS '2026-03-09 09:40:57' ON COMPLETION NOT PRESERVE ENABLE DO BEGIN
+    DELETE FROM prestamo
+    WHERE fechaDevolucion <= NOW() - INTERVAL 1 YEAR;
+    
+END$$
+
+DELIMITER ;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
